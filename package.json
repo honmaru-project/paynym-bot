@@ -1,0 +1,20 @@
+{
+  "name": "paynym-bot",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Always-online BIP47 receiver that accepts payments without a notification transaction, using Soroban as the payment-code transport.",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "vectors": "node --experimental-strip-types --no-warnings test/vectors.test.ts",
+    "protocol": "node --experimental-strip-types --no-warnings test/protocol.test.ts",
+    "test": "npm run vectors && npm run protocol"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.7.0",
+    "@noble/hashes": "^1.6.0",
+    "@scure/base": "^1.2.0",
+    "@scure/bip32": "^1.6.0",
+    "tweetnacl": "^1.0.3"
+  }
+}
