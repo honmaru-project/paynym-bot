@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "description": "Always-online BIP47 receiver that accepts payments without a notification transaction, using Soroban as the payment-code transport.",
-  "license": "AGPL-3.0-only",
+  "license": "GPL-3.0-only",
   "scripts": {
     "vectors": "node --experimental-strip-types --no-warnings test/vectors.test.ts",
     "protocol": "node --experimental-strip-types --no-warnings test/protocol.test.ts",

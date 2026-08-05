@@ -147,3 +147,7 @@ and construct the `Registrar` with `scheme: 'confidential'` and a
 Node 22+ (uses built-in TypeScript type stripping via
 `--experimental-strip-types`; no build step). Dependencies are the audited
 noble/scure family plus tweetnacl — see `package.json`.
+
+## License
+
+GNU General Public License v3.0 only. See [LICENSE](LICENSE).
