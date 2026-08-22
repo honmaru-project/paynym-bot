@@ -9,7 +9,8 @@
     "vectors": "node --experimental-strip-types --no-warnings test/vectors.test.ts",
     "protocol": "node --experimental-strip-types --no-warnings test/protocol.test.ts",
     "regress": "node --experimental-strip-types --no-warnings test/register-fixes.test.ts",
-    "test": "npm run vectors && npm run protocol && npm run regress"
+    "tor": "node --experimental-strip-types --no-warnings test/tor.test.ts",
+    "test": "npm run vectors && npm run protocol && npm run regress && npm run tor"
   },
   "dependencies": {
     "@noble/curves": "^1.7.0",
