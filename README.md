@@ -118,9 +118,17 @@ and construct the `Registrar` with `scheme: 'confidential'` and a
 | `src/soroban.ts` | Soroban JSON-RPC client, `encodeDirectory`, NaCl box channel, Ed25519 confidential auth. Matches the reference clients' wire format. |
 | `src/register.ts` | Notification-less registration protocol (sender + `Registrar`) and the sender `Registry`. |
 | `src/watcher.ts` | Turns the registry into the gap-limited address set to watch, with a pluggable used-address oracle. |
+| `src/config.ts` | Configuration parsing and validation for paynymd. |
+| `src/store.ts` | Atomic state store and single-instance lockfile. |
+| `src/daemon.ts` | Scheduler and the publish / inbox / scan ticks. |
+| `src/log.ts` | JSONL structured logging with a mandatory redaction layer. |
+| `src/transport/tor.ts` | Zero-dependency SOCKS5 + HTTP/1.1 client for Soroban over Tor. |
+| `src/oracle/` | Used-address oracles for electrs and Bitcoin Core over Tor. |
+| `bin/paynymd.ts` | Daemon entrypoint (`run`, `status`, `export`, `import`, `address`). |
 | `test/vectors.test.ts` | The BIP47 vector gate. |
 | `test/protocol.test.ts` | Offline end-to-end protocol test over an in-memory node. |
 | `example.ts` | One-shot live wiring against a real node. |
+| `docs/OPERATING.md` | Deployment, backup, and restore runbook. |
 
 ## Operating the receiver
 
@@ -139,8 +147,10 @@ and construct the `Registrar` with `scheme: 'confidential'` and a
 
 - Derivation: verified against official vectors (0–9), both directions. ✅
 - Registration protocol: offline end-to-end incl. forgery rejection. ✅
-- Next: a persistent daemon loop (publish/poll/scan on timers) and the
-  Tor-SOCKS transport wiring sketched in `example.ts`.
+- Rendezvous durability fixes (§4.1 / §4.2) with regression tests. ✅
+- `paynymd` daemon: Tor-only transport, atomic state store, electrs/Core oracle,
+  publish/inbox/scan scheduler, CLI, log redaction tests. ✅
+- Manual: testnet soak and live Tor verification before production use.
 
 ## Requirements
 
