@@ -1,0 +1,28 @@
+[Unit]
+Description=paynym-bot notification-less BIP47 receiver
+After=network-online.target tor.service
+Wants=tor.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node --experimental-strip-types /opt/paynym-bot/bin/paynymd.ts run \
+  --config /etc/paynymd/paynymd.json
+Restart=on-failure
+RestartSec=10s
+User=paynymd
+StateDirectory=paynymd
+ConfigurationDirectory=paynymd
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
