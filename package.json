@@ -10,7 +10,8 @@
     "protocol": "node --experimental-strip-types --no-warnings test/protocol.test.ts",
     "regress": "node --experimental-strip-types --no-warnings test/register-fixes.test.ts",
     "tor": "node --experimental-strip-types --no-warnings test/tor.test.ts",
-    "test": "npm run vectors && npm run protocol && npm run regress && npm run tor"
+    "store": "node --experimental-strip-types --no-warnings test/store.test.ts",
+    "test": "npm run vectors && npm run protocol && npm run regress && npm run tor && npm run store"
   },
   "dependencies": {
     "@noble/curves": "^1.7.0",
