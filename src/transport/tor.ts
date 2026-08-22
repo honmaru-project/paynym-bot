@@ -29,6 +29,8 @@ export type TorOptions = {
   socksHost?: string
   socksPort?: number
   requestTimeoutMs?: number
+  /** Extra HTTP headers (e.g. Bitcoin Core's Authorization). */
+  headers?: Record<string, string>
   /**
    * SOCKS username/password for stream isolation. A getter is supported so the
    * caller (CircuitManager) can rotate credentials between requests; the
@@ -53,13 +55,13 @@ export function torTransport(url: string, opts: TorOptions = {}): RpcTransport {
       typeof opts.credentials === 'function' ? opts.credentials() : opts.credentials
     let socket: Socket | undefined
     try {
-      socket = await openTunnel(destHost, destPort, {
+      socket = await socksConnect(destHost, destPort, {
         socksHost,
         socksPort,
         credentials,
         timeoutMs: requestTimeoutMs,
       })
-      return await httpRequest(socket, destHost, destPort, path, body, requestTimeoutMs)
+      return await httpRequest(socket, destHost, destPort, path, body, requestTimeoutMs, opts.headers)
     } finally {
       socket?.destroy()
     }
@@ -68,7 +70,7 @@ export function torTransport(url: string, opts: TorOptions = {}): RpcTransport {
 
 // --- SOCKS5 ---------------------------------------------------------------
 
-type TunnelOptions = {
+export type TunnelOptions = {
   socksHost: string
   socksPort: number
   credentials?: SocksCredentials
@@ -86,7 +88,12 @@ const SOCKS_REPLIES: Record<number, string> = {
   0x08: 'address type not supported',
 }
 
-async function openTunnel(destHost: string, destPort: number, opts: TunnelOptions): Promise<Socket> {
+/**
+ * Open a TCP tunnel through the SOCKS5 proxy to `destHost:destPort` and run
+ * the handshake. The caller owns the returned Socket and must destroy it. The
+ * destination hostname is passed as ATYP-3 so Tor resolves it — no local DNS.
+ */
+export async function socksConnect(destHost: string, destPort: number, opts: TunnelOptions): Promise<Socket> {
   const socket = connect(opts.socksPort, opts.socksHost)
   // A Socket with no 'error' listener that emits 'error' would crash the
   // process. Transport failures surface through the reader (via 'close') or
@@ -173,17 +180,19 @@ async function httpRequest(
   path: string,
   body: Buffer,
   timeoutMs: number,
+  extraHeaders: Record<string, string> = {},
 ): Promise<any> {
-  const head = [
+  const lines = [
     `POST ${path} HTTP/1.1`,
     `Host: ${port === 80 ? host : `${host}:${port}`}`,
     'Content-Type: application/json',
     `Content-Length: ${body.length}`,
     'User-Agent: HotJava/1.1.2 FCS',
     'Connection: close',
-    '',
-    '',
-  ].join('\r\n')
+  ]
+  for (const [k, v] of Object.entries(extraHeaders)) lines.push(`${k}: ${v}`)
+  lines.push('', '')
+  const head = lines.join('\r\n')
   socket.write(Buffer.concat([Buffer.from(head, 'utf8'), body]))
 
   const reader = new SocketReader(socket)
