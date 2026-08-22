@@ -15,14 +15,14 @@ Back up together:
 
 The registry changes every time a new sender registers. A daily encrypted copy of `state.json` is the minimum responsible posture.
 
-Supported round-trip:
+Supported round-trip (full `state.json` shape — registry, box key, and credit ledger):
 
 ```bash
 paynymd export --config /etc/paynymd/paynymd.json --out backup.json
 paynymd import --config /etc/paynymd/paynymd.json --in backup.json
 ```
 
-Import merges new senders; it refuses to clobber an existing registry with a mismatched seed.
+Import merges new senders; it refuses to clobber when the backup payment code does not match the seed.
 
 ## Prerequisites
 

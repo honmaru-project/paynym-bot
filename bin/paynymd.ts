@@ -23,7 +23,7 @@ import { createLogger } from '../src/log.ts'
 import { createOracle } from '../src/oracle/index.ts'
 import { Registrar, Registry } from '../src/register.ts'
 import { SorobanRPC, BoxKeypair, naclSigner, unhex } from '../src/soroban.ts'
-import { StateStore, LockHeldError } from '../src/store.ts'
+import { StateStore, LockHeldError, STATE_VERSION } from '../src/store.ts'
 import type { PersistedState } from '../src/store.ts'
 import { CircuitManager } from '../src/transport/isolation.ts'
 import { torTransport } from '../src/transport/tor.ts'
@@ -98,7 +98,6 @@ function buildRegistrar(identity: PaynymIdentity, state: PersistedState | null):
     box = BoxKeypair.fromSecretKey(unhex(boxSecretHex))
   } else {
     box = BoxKeypair.generate()
-    boxSecretHex = box.secretKey.length === 32 ? Buffer.from(box.secretKey).toString('hex') : ''
     boxSecretHex = Buffer.from(box.secretKey).toString('hex')
   }
   const registrar = new Registrar(identity, box, registry, {
@@ -153,7 +152,7 @@ async function cmdStatus(identity: PaynymIdentity, store: StateStore): Promise<v
   )
 }
 
-async function cmdExport(store: StateStore): Promise<void> {
+async function cmdExport(identity: PaynymIdentity, store: StateStore): Promise<void> {
   const out = values.out
   if (!out) {
     console.error('export requires --out <file>')
@@ -164,8 +163,11 @@ async function cmdExport(store: StateStore): Promise<void> {
     console.error('no state to export')
     process.exit(EXIT_CONFIG)
   }
-  writeFileSync(out, JSON.stringify({ registry: state.registry }, null, 2), { mode: 0o600 })
-  console.log(`exported ${state.registry.length} sender(s) to ${out}`)
+  // Full-state backup: the registry is the load-bearing part, but the box
+  // key (in-flight senders encrypted to it) and credit ledger must survive a
+  // restore too. The file is a complete credential set — 0600, never logged.
+  writeFileSync(out, JSON.stringify(state, null, 2), { mode: 0o600 })
+  console.log(`exported ${state.registry.length} sender(s) and box key to ${out}`)
 }
 
 async function cmdImport(identity: PaynymIdentity, store: StateStore): Promise<void> {
@@ -174,12 +176,16 @@ async function cmdImport(identity: PaynymIdentity, store: StateStore): Promise<v
     console.error('import requires --in <file>')
     process.exit(EXIT_CONFIG)
   }
-  const backup = JSON.parse(readFileSync(input, 'utf8')) as { registry?: unknown }
+  const backup = JSON.parse(readFileSync(input, 'utf8')) as Partial<PersistedState>
   if (!Array.isArray(backup.registry)) {
     console.error('backup file must contain a registry array')
     process.exit(EXIT_CONFIG)
   }
-  const incoming = Registry.fromJSON(backup.registry as Parameters<typeof Registry.fromJSON>[0])
+  if (backup.paymentCode && backup.paymentCode !== identity.paymentCode()) {
+    console.error('backup payment code does not match the seed; import refused')
+    process.exit(EXIT_MISMATCH)
+  }
+  const incoming = Registry.fromJSON(backup.registry)
   const existing = store.load()
   const { boxSecretHex } = buildRegistrar(identity, existing)
   const merged = existing ? Registry.fromJSON(existing.registry) : new Registry()
@@ -188,12 +194,12 @@ async function cmdImport(identity: PaynymIdentity, store: StateStore): Promise<v
     if (merged.add(rec.paymentCode, rec.label, rec.firstSeen)) added++
   }
   const state: PersistedState = existing ?? {
-    version: 1,
+    version: STATE_VERSION,
     network: config.network,
     paymentCode: identity.paymentCode(),
-    boxSecretKey: boxSecretHex,
+    boxSecretKey: backup.boxSecretKey ?? boxSecretHex,
     registry: [],
-    credited: [],
+    credited: backup.credited ?? [],
   }
   if (state.paymentCode !== identity.paymentCode()) {
     console.error('state payment code does not match seed; import refused')
@@ -309,7 +315,7 @@ try {
   const store = loadStore()
 
   if (sub === 'status') await cmdStatus(identity, store)
-  else if (sub === 'export') await cmdExport(store)
+  else if (sub === 'export') await cmdExport(identity, store)
   else if (sub === 'import') await cmdImport(identity, store)
   else if (sub === 'address') await cmdAddress(identity, store)
   else await cmdRun(identity, store)
