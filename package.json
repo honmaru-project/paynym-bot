@@ -13,7 +13,8 @@
     "store": "node --experimental-strip-types --no-warnings test/store.test.ts",
     "oracle": "node --experimental-strip-types --no-warnings test/oracle.test.ts",
     "daemon": "node --experimental-strip-types --no-warnings test/daemon.test.ts",
-    "test": "npm run vectors && npm run protocol && npm run regress && npm run tor && npm run store && npm run oracle && npm run daemon"
+    "redaction": "node --experimental-strip-types --no-warnings test/redaction.test.ts",
+    "test": "npm run vectors && npm run protocol && npm run regress && npm run tor && npm run store && npm run oracle && npm run daemon && npm run redaction"
   },
   "dependencies": {
     "@noble/curves": "^1.7.0",
