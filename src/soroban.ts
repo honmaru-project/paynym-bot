@@ -159,6 +159,12 @@ export class BoxKeypair {
     return new BoxKeypair(kp.publicKey, kp.secretKey)
   }
 
+  /** Rebuild a keypair from a persisted secret key (32 bytes). */
+  static fromSecretKey(secretKey: Uint8Array): BoxKeypair {
+    const kp = nacl.box.keyPair.fromSecretKey(secretKey)
+    return new BoxKeypair(kp.publicKey, kp.secretKey)
+  }
+
   publicKeyHex(): string {
     return toHex(this.publicKey)
   }

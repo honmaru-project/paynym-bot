@@ -27,6 +27,8 @@ export class MemoryNode {
   readonly transport: RpcTransport
   private dirs = new Map<string, Entry[]>()
   private nowMs = 0
+  /** directory.Add calls per directory key, for scheduler tests. */
+  readonly addCounts = new Map<string, number>()
 
   constructor() {
     this.transport = async (payload: any) => {
@@ -39,6 +41,7 @@ export class MemoryNode {
         if (existing) existing.expireOn = this.nowMs + ttl
         else list.push({ value: a.Entry, expireOn: this.nowMs + ttl })
         this.dirs.set(a.Name, list)
+        this.addCounts.set(a.Name, (this.addCounts.get(a.Name) ?? 0) + 1)
         return { result: { Status: 'success' } }
       }
       if (method === 'directory.List') {

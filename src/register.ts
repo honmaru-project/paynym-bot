@@ -239,6 +239,13 @@ export class Registrar {
     return this.box.publicKeyHex()
   }
 
+  /** Box secret key hex for durable persistence (§6.3). The key is a
+   *  registration identity: senders encrypted to it, so it must be stable
+   *  across restarts. */
+  boxSecretKeyHex(): string {
+    return Buffer.from(this.box.secretKey).toString('hex')
+  }
+
   /** Re-publish our rendezvous box key. Call on a timer (Soroban TTL <= 15m). */
   async publishRendezvous(rpc: SorobanRPC, mode: Mode = 'long'): Promise<boolean> {
     return rpc.add(rendezvousName(this.identity.paymentCode(), this.scheme), this.box.publicKeyHex(), mode)
