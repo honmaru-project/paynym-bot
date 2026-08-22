@@ -9,7 +9,7 @@
 // Scheduler: rendezvous republished strictly more often than the TTL across a
 //   simulated hour; exponential backoff caps at 15 min; a failed persist
 //   leaves the inbox entry in place and the next tick retries the persist
-//   BEFORE touching the inbox (§4.2 ordering).
+//   BEFORE touching the inbox (durability ordering).
 // Run: npm run daemon
 
 import fs from 'node:fs'
@@ -316,7 +316,7 @@ await (async () => {
     await daemon.stop()
   }
 
-  // --- §4.2: failed persist leaves entry, next tick retries BEFORE inbox --------
+  // --- failed persist leaves entry, next tick retries BEFORE inbox ------------
   {
     const node = memoryNode()
     const rpc = new SorobanRPC(node.transport)
@@ -357,15 +357,15 @@ await (async () => {
     } catch {
       tickThrew = true
     }
-    assert('§4.2: persist failure propagates out of the tick', tickThrew)
-    assert('§4.2: inbox entry survives failed persist', node.live(inboxName(bob.paymentCode())).length === 1)
+    assert('durability: persist failure propagates out of the tick', tickThrew)
+    assert('durability: inbox entry survives failed persist', node.live(inboxName(bob.paymentCode())).length === 1)
 
     // Disk healed: next tick retries persist BEFORE poll, then drains + persists.
     failSave = false
     await daemon.runTick('inbox')
     const state = store.load()!
-    assert('§4.2: entry finally removed', node.live(inboxName(bob.paymentCode())).length === 0)
-    assert('§4.2: registration durably persisted after recovery', state.registry.some((r) => r.paymentCode === alice.paymentCode()))
+    assert('durability: entry finally removed', node.live(inboxName(bob.paymentCode())).length === 0)
+    assert('durability: registration durably persisted after recovery', state.registry.some((r) => r.paymentCode === alice.paymentCode()))
     await daemon.stop()
   }
 

@@ -2,5 +2,5 @@ node_modules/
 package-lock.json
 *.log
 
-# Local-only editor/agent config — never for upstream.
+# Local-only IDE configuration — never for upstream.
 .cursor/

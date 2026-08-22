@@ -150,7 +150,7 @@ export class Registry {
 /**
  * Non-destructive list-with-retry, preserving waitAndRemove's polling behaviour
  * without its remove-on-read. Used for the rendezvous key, which is shared
- * state (§4.1): a single-use handshake token is consumed on read; a published
+ * state: a single-use handshake token is consumed on read; a published
  * box key is deliberately broadcast to any number of senders.
  */
 async function listWithRetry(
@@ -183,7 +183,7 @@ export async function registerWithReceiver(
   const scheme = opts.scheme ?? 'plain'
   const box = BoxKeypair.generate()
 
-  // §4.1: read the rendezvous key NON-destructively. The entry is a public key
+  // Read the rendezvous key NON-destructively. The entry is a public key
   // the receiver deliberately broadcasts; consuming it on first read (the old
   // waitAndRemove path) made every later sender fail until the next publish
   // tick. Take the last entry, matching waitAndRemove's choice, so a receiver
@@ -239,7 +239,7 @@ export class Registrar {
     return this.box.publicKeyHex()
   }
 
-  /** Box secret key hex for durable persistence (§6.3). The key is a
+  /** Box secret key hex for durable persistence. The key is a
    *  registration identity: senders encrypted to it, so it must be stable
    *  across restarts. */
   boxSecretKeyHex(): string {
@@ -255,7 +255,7 @@ export class Registrar {
    * Drain the inbox: decrypt, verify signatures, register new senders.
    * Returns the payment codes newly added to the registry this call.
    *
-   * Durability contract (§4.2): a registration is only reported after
+   * Durability contract: a registration is only reported after
    * `onAccepted` has resolved, and the inbox entry is only removed after that.
    * If `onAccepted` throws, the exception propagates BEFORE the entry is
    * removed, so the only remaining copy survives to be re-ingested next tick
@@ -272,7 +272,7 @@ export class Registrar {
       const paymentCode = this.ingest(entry)
       if (!paymentCode) {
         // Malformed / unverifiable: count it, remove it, continue — a bad entry
-        // must never pin the queue (§4.3). Never log the ciphertext.
+        // must never pin the queue. Never log the ciphertext.
         this.rejectCount++
       } else if (this.registry.add(paymentCode)) {
         if (opts.onAccepted) await opts.onAccepted(paymentCode) // durable before removal

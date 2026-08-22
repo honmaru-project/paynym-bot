@@ -57,7 +57,8 @@ computed pay address equals the receiver's watch address for every index:
 
 ```
 npm install
-npm test          # runs the vector gate AND the offline protocol test
+npm test          # runs the full suite: vectors, protocol, daemon, transport,
+                  # store/config, oracle, and redaction tests
 ```
 
 Do not trust anything downstream until `npm run vectors` prints `PASS`.
@@ -84,8 +85,10 @@ Grounded in Soroban's actual wire protocol (`services/directory.go`,
    (`{ paymentCode, ts, sig }`) in a NaCl box to the receiver, and `Add`s it to
    the receiver's inbox directory. No transaction is broadcast.
 3. Receiver drains the inbox, decrypts, verifies, and records the sender.
-4. From then on the receiver watches `receiveAddress(senderCode, i…i+gap)` and
-   the sender pays the identical `sendAddress(receiverCode, i)`.
+4. From then on the receiver watches a window of receive addresses per sender
+   — from `max(0, nextIndex − trailingWindow)` through `nextIndex + gap − 1`
+   (defaults: gap 5, trailing window 20) — and the sender pays the identical
+   `sendAddress(receiverCode, i)`.
 
 ### Correction: Soroban does **not** authenticate payment codes
 
@@ -127,6 +130,12 @@ and construct the `Registrar` with `scheme: 'confidential'` and a
 | `bin/paynymd.ts` | Daemon entrypoint (`run`, `status`, `export`, `import`, `address`). |
 | `test/vectors.test.ts` | The BIP47 vector gate. |
 | `test/protocol.test.ts` | Offline end-to-end protocol test over an in-memory node. |
+| `test/register-fixes.test.ts` | Rendezvous durability + inbox intake regressions. |
+| `test/tor.test.ts` | SOCKS5 + HTTP/1.1 transport tests against a fake proxy. |
+| `test/store.test.ts` | State store, lockfile, and config tests. |
+| `test/oracle.test.ts` | Electrum and Core oracle tests (scripthash, batching, reconnect). |
+| `test/daemon.test.ts` | Scheduler, tick, and fault-injection tests. |
+| `test/redaction.test.ts` | Log redaction acceptance test. |
 | `example.ts` | One-shot live wiring against a real node. |
 | `docs/OPERATING.md` | Deployment, backup, and restore runbook. |
 
@@ -147,7 +156,7 @@ and construct the `Registrar` with `scheme: 'confidential'` and a
 
 - Derivation: verified against official vectors (0–9), both directions. ✅
 - Registration protocol: offline end-to-end incl. forgery rejection. ✅
-- Rendezvous durability fixes (§4.1 / §4.2) with regression tests. ✅
+- Rendezvous durability fixes (non-destructive read, durable inbox intake) with regression tests. ✅
 - `paynymd` daemon: Tor-only transport, atomic state store, electrs/Core oracle,
   publish/inbox/scan scheduler, CLI, log redaction tests. ✅
 - Manual: testnet soak and live Tor verification before production use.

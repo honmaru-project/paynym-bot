@@ -6,12 +6,12 @@
 // task backs off exponentially to a 15-minute cap and keeps retrying; it never
 // exits. Transport errors are the normal case, not the exceptional one.
 //
-// The ordering rule, stated once (§4.2): perform the effect → update memory →
-// make it durable → only then destroy the remote copy. Every Soroban remove in
-// this daemon is the last statement of its transaction, and every failure
-// before it leaves the entry in place. Duplicated work is free; lost work is
-// not, because receive keys cannot be re-derived from the seed without the
-// registered sender payment codes.
+// Ordering rule: perform the effect → update memory → make it durable →
+// only then destroy the remote copy. Every Soroban remove in this daemon is
+// the last statement of its transaction, and every failure before it leaves
+// the entry in place. Duplicated work is free; lost work is not, because
+// receive keys cannot be re-derived from the seed without the registered
+// sender payment codes.
 
 import type { Config } from './config.ts'
 import { MODE_TTL_MS } from './config.ts'
@@ -224,7 +224,7 @@ export class Daemon {
 
   private async inboxTick(): Promise<void> {
     this.warnClearnet()
-    // §4.2 ordering: retry any prior failed persist BEFORE touching the inbox,
+    // Durability ordering: retry any prior failed persist BEFORE touching the inbox,
     // or a retry-remove could destroy the only copy of an unpersisted
     // registration. persist() throws on failure, aborting this tick before
     // any poll/remove runs.

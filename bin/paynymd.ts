@@ -224,7 +224,7 @@ async function cmdAddress(identity: PaynymIdentity, store: StateStore): Promise<
 
 async function cmdRun(identity: PaynymIdentity, store: StateStore): Promise<void> {
   if (values['show-payment-code']) {
-    // stdout only — never through the logger (§9).
+    // stdout only — never through the logger.
     console.log(identity.paymentCode())
   }
 

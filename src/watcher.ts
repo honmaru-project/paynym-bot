@@ -46,7 +46,7 @@ export function watchWindow(
 }
 
 /**
- * Used-address oracle contract (§6.4). Implementations query ONLY the
+ * Used-address oracle contract. Implementations query ONLY the
  * operator's own node over Tor — the watch set is the complete counterparty
  * graph and must never reach a public explorer. Batch status so one slow
  * round trip serves a whole window.

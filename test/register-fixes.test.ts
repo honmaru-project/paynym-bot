@@ -1,16 +1,16 @@
-// Regression tests for the two §4 defects (implementation handoff).
+// Regression tests for rendezvous durability and inbox intake ordering.
 //
-// A2 (§4.1): two senders register back-to-back against one online receiver with
+// A2: two senders register back-to-back against one online receiver with
 //   NO intervening publish tick. Both must succeed — the first sender's read of
 //   the rendezvous key must not consume it. Fails against the pre-fix code,
 //   which used waitAndRemove on a deliberately long-lived broadcast entry.
 //
-// A3 (§4.2): a crash between accepting a registration and removing its inbox
+// A3: a crash between accepting a registration and removing its inbox
 //   entry must lose nothing. We inject a throw inside `onAccepted`; the entry
 //   must survive in the inbox, and a "restart" (fresh Registrar + Registry from
 //   the same state) must re-ingest it and finally remove it.
 //
-// Plus: the persisted box-key case from §10.2 — a sender that fetched the
+// Plus: the persisted box-key case — a sender that fetched the
 //   rendezvous key, then restarts the daemon with the SAME box keypair, must
 //   still be able to decrypt when the envelope is finally posted.
 
@@ -55,7 +55,7 @@ await (async () => {
 
     await registrar.publishRendezvous(rpc)
 
-    // Sender A registers, then sender B registers. With the §4.1 fix the
+    // Sender A registers, then sender B registers. With the non-destructive read
     // rendezvous key is still there for B (no intervening publish tick).
     const aPosted = await registerWithReceiver(rpc, alice, bob.paymentCode())
     const bPosted = await registerWithReceiver(rpc, carol, bob.paymentCode())
@@ -143,7 +143,7 @@ await (async () => {
 
 console.log('')
 if (failures === 0) {
-  console.log('PASS — §4 regression tests (A2, A3, persisted box key).')
+  console.log('PASS — register durability regressions (A2, A3, persisted box key).')
 } else {
   console.log(`FAIL — ${failures} regression check(s) failed.`)
   process.exit(1)

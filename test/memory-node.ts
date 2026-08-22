@@ -1,7 +1,7 @@
 // In-memory Soroban node for offline tests.
 //
-// Q7 (§13 of the handoff paper): the node models the real server's semantics
-// closely enough to exercise the daemon:
+// Models soroban internal/memory/memory.go semantics closely enough to exercise
+// the daemon:
 //   * directory.Add of an identical (Name, Entry) REFRESHES the TTL rather than
 //     appending a duplicate — mirrors soroban internal/memory/memory.go.
 //   * Entries expire after the mode TTL, so scheduler tests can observe a
