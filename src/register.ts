@@ -148,6 +148,27 @@ export class Registry {
 // --- Sender side ------------------------------------------------------------
 
 /**
+ * Non-destructive list-with-retry, preserving waitAndRemove's polling behaviour
+ * without its remove-on-read. Used for the rendezvous key, which is shared
+ * state (§4.1): a single-use handshake token is consumed on read; a published
+ * box key is deliberately broadcast to any number of senders.
+ */
+async function listWithRetry(
+  rpc: SorobanRPC,
+  name: string,
+  opts: { tries?: number; intervalMs?: number } = {},
+): Promise<string[]> {
+  const tries = opts.tries ?? 25
+  const intervalMs = opts.intervalMs ?? 200
+  for (let i = 0; i < tries; i++) {
+    const values = await rpc.list(name)
+    if (values.length > 0) return values
+    await new Promise((r) => setTimeout(r, intervalMs))
+  }
+  return []
+}
+
+/**
  * Register our payment code with a receiver so they can watch for our payments,
  * with no notification transaction. Fetches the receiver's rendezvous box key,
  * encrypts a signed envelope to it, and posts it to the receiver's inbox.
@@ -162,9 +183,18 @@ export async function registerWithReceiver(
   const scheme = opts.scheme ?? 'plain'
   const box = BoxKeypair.generate()
 
-  const receiverBoxHex = await rpc.waitAndRemove(rendezvousName(receiverPaymentCode, scheme), {
+  // §4.1: read the rendezvous key NON-destructively. The entry is a public key
+  // the receiver deliberately broadcasts; consuming it on first read (the old
+  // waitAndRemove path) made every later sender fail until the next publish
+  // tick. Take the last entry, matching waitAndRemove's choice, so a receiver
+  // that just rotated its box key wins over a stale one still inside its TTL.
+  // Node behaviour (confirmed against soroban internal/memory/memory.go): Add
+  // of an identical entry refreshes the TTL and does NOT append a duplicate,
+  // so list length is normally 1 — but we never assume that.
+  const entries = await listWithRetry(rpc, rendezvousName(receiverPaymentCode, scheme), {
     tries: opts.tries ?? 25,
   })
+  const receiverBoxHex = entries.length ? entries[entries.length - 1] : null
   if (!receiverBoxHex) throw new Error('receiver rendezvous key not found (is the receiver online?)')
 
   const envelope = JSON.stringify(buildRegisterEnvelope(sender))
@@ -187,6 +217,7 @@ export class Registrar {
   private readonly box: BoxKeypair
   private readonly scheme: Scheme
   private readonly auth?: ConfidentialAuth
+  private rejectCount = 0
 
   constructor(
     identity: PaynymIdentity,
@@ -216,18 +247,38 @@ export class Registrar {
   /**
    * Drain the inbox: decrypt, verify signatures, register new senders.
    * Returns the payment codes newly added to the registry this call.
+   *
+   * Durability contract (§4.2): a registration is only reported after
+   * `onAccepted` has resolved, and the inbox entry is only removed after that.
+   * If `onAccepted` throws, the exception propagates BEFORE the entry is
+   * removed, so the only remaining copy survives to be re-ingested next tick
+   * (idempotent: Registry.add returns false for a code it already holds).
    */
-  async poll(rpc: SorobanRPC, opts: { tries?: number } = {}): Promise<string[]> {
+  async poll(
+    rpc: SorobanRPC,
+    opts: { onAccepted?: (paymentCode: string) => Promise<void> } = {},
+  ): Promise<string[]> {
     const name = inboxName(this.identity.paymentCode(), this.scheme)
     const entries = await rpc.list(name, this.auth)
     const added: string[] = []
     for (const entry of entries) {
       const paymentCode = this.ingest(entry)
-      if (paymentCode && this.registry.add(paymentCode)) added.push(paymentCode)
-      // Always remove processed entries so the queue stays small.
+      if (!paymentCode) {
+        // Malformed / unverifiable: count it, remove it, continue — a bad entry
+        // must never pin the queue (§4.3). Never log the ciphertext.
+        this.rejectCount++
+      } else if (this.registry.add(paymentCode)) {
+        if (opts.onAccepted) await opts.onAccepted(paymentCode) // durable before removal
+        added.push(paymentCode)
+      }
       await rpc.remove(name, entry)
     }
     return added
+  }
+
+  /** Number of inbox entries rejected for failing to decrypt or verify. */
+  rejected(): number {
+    return this.rejectCount
   }
 
   /** Decrypt + verify a single sealed inbox entry. Returns the payment code or null. */
